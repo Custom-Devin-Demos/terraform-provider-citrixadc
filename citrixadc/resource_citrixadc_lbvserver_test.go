@@ -523,3 +523,60 @@ func TestAccLbvserver_enable_disable(t *testing.T) {
 		},
 	})
 }
+
+func TestAccLbvserver_backupvserver_removal(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckLbvserverDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccLbvserver_backupvserver_set,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckLbvserverExist("citrixadc_lbvserver.test", nil),
+					resource.TestCheckResourceAttr("citrixadc_lbvserver.test", "backupvserver", "backup-lb"),
+				),
+			},
+			{
+				Config: testAccLbvserver_backupvserver_removed,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckLbvserverExist("citrixadc_lbvserver.test", nil),
+					resource.TestCheckResourceAttr("citrixadc_lbvserver.test", "backupvserver", ""),
+				),
+			},
+		},
+	})
+}
+
+const testAccLbvserver_backupvserver_set = `
+resource "citrixadc_lbvserver" "backup" {
+	name = "backup-lb"
+	ipv46 = "10.202.11.12"
+	servicetype = "HTTP"
+	port = 80
+}
+
+resource "citrixadc_lbvserver" "test" {
+	name = "test-lb-backupvserver"
+	ipv46 = "10.202.11.11"
+	servicetype = "HTTP"
+	port = 80
+	backupvserver = citrixadc_lbvserver.backup.name
+}
+`
+
+const testAccLbvserver_backupvserver_removed = `
+resource "citrixadc_lbvserver" "backup" {
+	name = "backup-lb"
+	ipv46 = "10.202.11.12"
+	servicetype = "HTTP"
+	port = 80
+}
+
+resource "citrixadc_lbvserver" "test" {
+	name = "test-lb-backupvserver"
+	ipv46 = "10.202.11.11"
+	servicetype = "HTTP"
+	port = 80
+}
+`
