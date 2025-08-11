@@ -960,7 +960,15 @@ func readLbvserverFunc(d *schema.ResourceData, meta interface{}) error {
 	d.Set("authnvsname", data["authnvsname"])
 	d.Set("backuplbmethod", data["backuplbmethod"])
 	d.Set("backuppersistencetimeout", data["backuppersistencetimeout"])
-	d.Set("backupvserver", data["backupvserver"])
+	if backupvserver, ok := data["backupvserver"]; ok {
+		if backupvserver == "" || backupvserver == nil {
+			d.Set("backupvserver", "")
+		} else {
+			d.Set("backupvserver", backupvserver)
+		}
+	} else {
+		d.Set("backupvserver", "")
+	}
 	d.Set("bypassaaaa", data["bypassaaaa"])
 	d.Set("cacheable", data["cacheable"])
 	setToInt("clttimeout", d, data["clttimeout"])
@@ -1138,9 +1146,30 @@ func updateLbvserverFunc(d *schema.ResourceData, meta interface{}) error {
 		hasChange = true
 	}
 	if d.HasChange("backupvserver") {
-		log.Printf("[DEBUG] netscaler-provider:  Backupvserver has changed for lbvserver %s, starting update", lbvserverName)
-		lbvserver.Backupvserver = d.Get("backupvserver").(string)
-		hasChange = true
+		log.Printf("[DEBUG] netscaler-provider: Backupvserver has changed for lbvserver %s, starting update", lbvserverName)
+		
+		oldValue, newValue := d.GetChange("backupvserver")
+		oldBackupvserver := oldValue.(string)
+		newBackupvserver := newValue.(string)
+		
+		// If transitioning from non-empty to empty, unset the attribute
+		if oldBackupvserver != "" && newBackupvserver == "" {
+			log.Printf("[DEBUG] netscaler-provider: Unsetting backupvserver for lbvserver %s", lbvserverName)
+			
+			unsetData := map[string]interface{}{
+				"name": lbvserverName,
+				"backupvserver": true,
+			}
+			
+			err := client.ActOnResource("lbvserver", unsetData, "unset")
+			if err != nil {
+				return fmt.Errorf("[ERROR] netscaler-provider: Error unsetting backupvserver for lbvserver %s: %s", lbvserverName, err.Error())
+			}
+			log.Printf("[DEBUG] netscaler-provider: Successfully unset backupvserver for lbvserver %s", lbvserverName)
+		} else if newBackupvserver != "" {
+			lbvserver.Backupvserver = newBackupvserver
+			hasChange = true
+		}
 	}
 	if d.HasChange("bypassaaaa") {
 		log.Printf("[DEBUG] netscaler-provider:  Bypassaaaa has changed for lbvserver %s, starting update", lbvserverName)
