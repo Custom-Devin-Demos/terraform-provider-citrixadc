@@ -1138,9 +1138,26 @@ func updateLbvserverFunc(d *schema.ResourceData, meta interface{}) error {
 		hasChange = true
 	}
 	if d.HasChange("backupvserver") {
-		log.Printf("[DEBUG] netscaler-provider:  Backupvserver has changed for lbvserver %s, starting update", lbvserverName)
-		lbvserver.Backupvserver = d.Get("backupvserver").(string)
-		hasChange = true
+		log.Printf("[DEBUG] netscaler-provider: Backupvserver has changed for lbvserver %s, starting update", lbvserverName)
+		oldValue, newValue := d.GetChange("backupvserver")
+		
+		if oldValue.(string) != "" && newValue.(string) == "" {
+			unsetStruct := struct {
+				Name          string `json:"name"`
+				Backupvserver bool   `json:"backupvserver"`
+			}{
+				Name:          lbvserverName,
+				Backupvserver: true,
+			}
+			err := client.ActOnResource(service.Lbvserver.Type(), &unsetStruct, "unset")
+			if err != nil {
+				return fmt.Errorf("[ERROR] netscaler-provider: Error unsetting backupvserver for lbvserver %s", lbvserverName)
+			}
+		} else {
+			// Regular update operation
+			lbvserver.Backupvserver = newValue.(string)
+			hasChange = true
+		}
 	}
 	if d.HasChange("bypassaaaa") {
 		log.Printf("[DEBUG] netscaler-provider:  Bypassaaaa has changed for lbvserver %s, starting update", lbvserverName)
