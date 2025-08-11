@@ -1,6 +1,7 @@
 *.tfstate*
 tags
 terraform-provider-netscaler
+terraform-provider-citrixadc
 tools/tools
 .idea
 *.iml
